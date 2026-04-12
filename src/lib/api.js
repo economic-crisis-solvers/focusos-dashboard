@@ -12,18 +12,6 @@ async function request(path, options = {}, token = null) {
 }
 
 export const api = {
-  register: (email, name, password) =>
-    request("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, name, password }),
-    }),
-
-  login: (email, password) =>
-    request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
-
   getLiveScore: (token) => request("/api/score/live", {}, token),
   getHistory: (token, days = 7) =>
     request(`/api/score/history?days=${days}&granularity=hour`, {}, token).then(

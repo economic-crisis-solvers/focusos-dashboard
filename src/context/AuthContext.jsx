@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext(null);
 
@@ -7,35 +7,87 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // { userId, accessToken, email }
   const [loading, setLoading] = useState(true);
 
+  // Provision user with backend after every login
+  async function provision(token) {
+    try {
+      await fetch(
+        "https://backend-production-d113.up.railway.app/auth/provision",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+    } catch (e) {
+      console.warn("Provision failed:", e);
+    }
+  }
+
+  function sessionToUser(session) {
+    if (!session) return null;
+    return {
+      userId: session.user.id,
+      accessToken: session.access_token,
+      email: session.user.email,
+    };
+  }
+
   useEffect(() => {
-    const stored = localStorage.getItem('focusos_user');
-    if (stored) setUser(JSON.parse(stored));
-    setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const u = sessionToUser(session);
+      setUser(u);
+      if (u) provision(u.accessToken);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = sessionToUser(session);
+      setUser(u);
+      if (u) provision(u.accessToken);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    const data = await api.login(email, password);
-    const u = { userId: data.userId, accessToken: data.accessToken, email };
-    localStorage.setItem('focusos_user', JSON.stringify(u));
-    setUser(u);
-    return u;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw new Error(error.message);
+    return sessionToUser(data.session);
   };
 
-  const register = async (email, name, password) => {
-    const data = await api.register(email, name, password);
-    const u = { userId: data.userId, accessToken: data.accessToken, email };
-    localStorage.setItem('focusos_user', JSON.stringify(u));
-    setUser(u);
-    return u;
+  const register = async (email, password, name) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    if (error) throw new Error(error.message);
+    return sessionToUser(data.session);
   };
 
-  const logout = () => {
-    localStorage.removeItem('focusos_user');
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: "https://focusos-dashboard.vercel.app" },
+    });
+    if (error) throw new Error(error.message);
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider
+      value={{ user, login, register, loginWithGoogle, logout, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

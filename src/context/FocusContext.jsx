@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { api } from '../lib/api';
-import { useAuth } from './AuthContext';
+import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
+import { useAuth } from "./AuthContext";
 
 const FocusContext = createContext(null);
 
@@ -17,23 +17,27 @@ export function FocusProvider({ children }) {
   useEffect(() => {
     if (!user) return;
 
-    // fetch live score immediately
-    api.getLiveScore(user.accessToken)
-      .then(data => {
+    // Fetch live score immediately
+    api
+      .getLiveScore(user.accessToken)
+      .then((data) => {
         setScore(data.score);
         setState(data.state);
         setLastUpdated(data.timestamp);
       })
       .catch(console.error);
 
-    // subscribe to realtime
-    const channel = supabase.channel(`focus-${user.userId}`)
-      .on('broadcast', { event: 'focus_score_update' }, ({ payload }) => {
+    // Subscribe to Realtime using Supabase userId
+    const channel = supabase
+      .channel(`focus-${user.userId}`)
+      .on("broadcast", { event: "focus_score_update" }, ({ payload }) => {
         setScore(payload.score);
         setState(payload.state);
         setLastUpdated(payload.timestamp);
+        if (payload.residueMinutes != null)
+          setResidueMinutes(payload.residueMinutes);
       })
-      .on('broadcast', { event: 'focus_active_change' }, ({ payload }) => {
+      .on("broadcast", { event: "focus_active_change" }, ({ payload }) => {
         setFocusActive(payload.focus_active);
         setScore(payload.score);
       })
@@ -47,7 +51,16 @@ export function FocusProvider({ children }) {
   }, [user]);
 
   return (
-    <FocusContext.Provider value={{ score, state, focusActive, residueMinutes, lastUpdated, setResidueMinutes }}>
+    <FocusContext.Provider
+      value={{
+        score,
+        state,
+        focusActive,
+        residueMinutes,
+        lastUpdated,
+        setResidueMinutes,
+      }}
+    >
       {children}
     </FocusContext.Provider>
   );
