@@ -14,6 +14,8 @@ export default function Settings() {
   const [whitelist, setWhitelist] = useState("");
   const [quietStart, setQuietStart] = useState("22:00");
   const [quietEnd, setQuietEnd] = useState("07:00");
+  const [workStart, setWorkStart] = useState("09:00");
+  const [workEnd, setWorkEnd] = useState("18:00");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -29,6 +31,8 @@ export default function Settings() {
         setWhitelist((data.whitelist || []).join(", "));
         setQuietStart(data.quietHours?.start || "22:00");
         setQuietEnd(data.quietHours?.end || "07:00");
+        setWorkStart(data.workHours?.start || "09:00");
+        setWorkEnd(data.workHours?.end || "18:00");
       })
       .catch(() => setError("Could not load settings."))
       .finally(() => setLoading(false));
@@ -50,6 +54,7 @@ export default function Settings() {
         focusThreshold: threshold,
         whitelist: whitelistArr,
         quietHours: { start: quietStart, end: quietEnd },
+        workHours: { start: workStart, end: workEnd },
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -85,9 +90,55 @@ export default function Settings() {
           <Skeleton className="h-40" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
         </div>
       ) : (
         <div className="space-y-5">
+          {/* Work hours */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <h3 className="text-base font-medium text-white mb-1">
+              Work hours
+            </h3>
+            <p className="text-sm text-zinc-500 mb-5">
+              FocusOS is fully active during these hours. Outside this window it
+              watches silently — no DND, no nudges. Set it once and never touch
+              it again.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wider">
+                  Work starts
+                </label>
+                <input
+                  type="time"
+                  value={workStart}
+                  onChange={(e) => setWorkStart(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wider">
+                  Work ends
+                </label>
+                <input
+                  type="time"
+                  value={workEnd}
+                  onChange={(e) => setWorkEnd(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+              <p className="text-xs text-emerald-400">
+                Currently set:{" "}
+                <span className="font-semibold">
+                  {workStart} – {workEnd}
+                </span>{" "}
+                · Full protection active during these hours only
+              </p>
+            </div>
+          </div>
+
           {/* Focus threshold */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
             <h3 className="text-base font-medium text-white mb-1">
@@ -170,7 +221,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Save button */}
+          {/* Save */}
           <button
             onClick={save}
             disabled={saving}
