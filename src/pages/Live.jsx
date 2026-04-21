@@ -15,47 +15,20 @@ import { api } from "../lib/api";
 const CIRC = 263.9;
 
 const STATE_CFG = {
-  deep_focus: {
-    label: "Deep Focus",
-    color: "#10b981",
-    ring: "#10b981",
-    glow: "#10b98133",
-  },
-  engaged: {
-    label: "Engaged",
-    color: "#10b981",
-    ring: "#10b981",
-    glow: "#10b98133",
-  },
-  drifting: {
-    label: "Drifting",
-    color: "#f59e0b",
-    ring: "#f59e0b",
-    glow: "#f59e0b33",
-  },
-  distracted: {
-    label: "Distracted",
-    color: "#f97316",
-    ring: "#f97316",
-    glow: "#f9731633",
-  },
-  collapsed: {
-    label: "Collapsed",
-    color: "#ef4444",
-    ring: "#ef4444",
-    glow: "#ef444433",
-  },
+  deep_focus: { label: "Deep Focus", color: "#10b981", ring: "#10b981" },
+  engaged: { label: "Engaged", color: "#10b981", ring: "#10b981" },
+  drifting: { label: "Drifting", color: "#f59e0b", ring: "#f59e0b" },
+  distracted: { label: "Distracted", color: "#f97316", ring: "#f97316" },
+  collapsed: { label: "Collapsed", color: "#ef4444", ring: "#ef4444" },
 };
 
 function ScoreRing({ score, state }) {
   const cfg = STATE_CFG[state] || STATE_CFG.engaged;
   const offset = score != null ? CIRC - (score / 100) * CIRC : CIRC;
+  const glowId = "ring-glow";
+
   return (
     <div className="relative" style={{ width: 240, height: 240 }}>
-      <div
-        className="absolute inset-0 rounded-full transition-all duration-1000"
-        style={{ boxShadow: `0 0 60px 10px ${cfg.glow}`, borderRadius: "50%" }}
-      />
       <svg
         viewBox="0 0 100 100"
         width={240}
@@ -63,10 +36,24 @@ function ScoreRing({ score, state }) {
         style={{
           transform: "rotate(-90deg)",
           display: "block",
-          position: "relative",
-          zIndex: 1,
+          overflow: "visible",
         }}
       >
+        <defs>
+          <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur
+              in="SourceGraphic"
+              stdDeviation="2.5"
+              result="blur"
+            />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Track */}
         <circle
           cx="50"
           cy="50"
@@ -75,6 +62,26 @@ function ScoreRing({ score, state }) {
           stroke="#1a1a1f"
           strokeWidth="7"
         />
+
+        <circle
+          cx="50"
+          cy="50"
+          r="42"
+          fill="none"
+          stroke={cfg.ring}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={CIRC}
+          strokeDashoffset={offset}
+          opacity="0.35"
+          style={{
+            transition:
+              "stroke-dashoffset 1s cubic-bezier(.4,0,.2,1), stroke 1s ease",
+            filter: "blur(4px)",
+          }}
+        />
+
+        {/* Main arc */}
         <circle
           cx="50"
           cy="50"
@@ -88,14 +95,12 @@ function ScoreRing({ score, state }) {
           style={{
             transition:
               "stroke-dashoffset 1s cubic-bezier(.4,0,.2,1), stroke 1s ease",
-            filter: `drop-shadow(0 0 6px ${cfg.ring})`,
           }}
         />
       </svg>
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center"
-        style={{ zIndex: 2 }}
-      >
+
+      {/* Score text — centered over SVG */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span
           className="font-semibold tabular-nums"
           style={{
@@ -176,7 +181,6 @@ export default function Live() {
     return () => clearInterval(id);
   }, []);
 
-  // Use live residue from FocusContext if available, else fall back to insights
   const protected_min = Math.round(
     insights?.residueStats?.minutesProtected ?? 0,
   );
@@ -224,8 +228,11 @@ export default function Live() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-        {/* Score ring */}
-        <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-10 flex flex-col items-center gap-6">
+        {/* Score ring card — overflow visible so glow isn't clipped */}
+        <div
+          className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-10 flex flex-col items-center gap-6"
+          style={{ overflow: "visible" }}
+        >
           <ScoreRing score={score} state={state} />
           <span
             className="font-semibold px-6 py-2 rounded-full border-2 tracking-wide"
@@ -287,7 +294,7 @@ export default function Live() {
                   >
                     {residue}
                     <span
-                      className="text-lg font-normal ml-2"
+                      className="text-lg font-normal ml-2 transition-colors duration-700"
                       style={{ color: residue > 20 ? "#ef4444aa" : "#71717a" }}
                     >
                       min
