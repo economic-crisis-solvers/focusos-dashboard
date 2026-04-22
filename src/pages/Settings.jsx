@@ -12,8 +12,6 @@ export default function Settings() {
   const { user } = useAuth();
   const [threshold, setThreshold] = useState(45);
   const [whitelist, setWhitelist] = useState("");
-  const [quietStart, setQuietStart] = useState("22:00");
-  const [quietEnd, setQuietEnd] = useState("07:00");
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("18:00");
   const [loading, setLoading] = useState(true);
@@ -29,8 +27,6 @@ export default function Settings() {
       .then((data) => {
         setThreshold(data.focusThreshold ?? 45);
         setWhitelist((data.whitelist || []).join(", "));
-        setQuietStart(data.quietHours?.start || "22:00");
-        setQuietEnd(data.quietHours?.end || "07:00");
         setWorkStart(data.workHours?.start || "09:00");
         setWorkEnd(data.workHours?.end || "18:00");
       })
@@ -53,7 +49,6 @@ export default function Settings() {
       await api.putSettings(user.accessToken, {
         focusThreshold: threshold,
         whitelist: whitelistArr,
-        quietHours: { start: quietStart, end: quietEnd },
         workHours: { start: workStart, end: workEnd },
       });
       setSaved(true);
@@ -185,40 +180,6 @@ export default function Settings() {
               placeholder="mom, boss, emergency (comma separated)"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors"
             />
-          </div>
-
-          {/* Quiet hours */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-            <h3 className="text-base font-medium text-white mb-1">
-              Quiet hours
-            </h3>
-            <p className="text-sm text-zinc-500 mb-4">
-              Focus Shield stays active during these hours regardless of score
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wider">
-                  Start
-                </label>
-                <input
-                  type="time"
-                  value={quietStart}
-                  onChange={(e) => setQuietStart(e.target.value)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-2 uppercase tracking-wider">
-                  End
-                </label>
-                <input
-                  type="time"
-                  value={quietEnd}
-                  onChange={(e) => setQuietEnd(e.target.value)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Save */}
