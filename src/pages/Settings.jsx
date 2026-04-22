@@ -60,11 +60,6 @@ export default function Settings() {
     }
   };
 
-  const thresholdState =
-    threshold >= 60 ? "Engaged" : threshold >= 45 ? "Drifting" : "Distracted";
-  const thresholdColor =
-    threshold >= 60 ? "#10b981" : threshold >= 45 ? "#f59e0b" : "#ef4444";
-
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <div className="mb-8">
@@ -154,13 +149,10 @@ export default function Settings() {
               <div className="text-right w-24">
                 <span
                   className="text-3xl font-semibold tabular-nums"
-                  style={{ color: thresholdColor }}
+                  style={{ color: "#818cf8" }}
                 >
                   {threshold}
                 </span>
-                <p className="text-xs mt-0.5" style={{ color: thresholdColor }}>
-                  {thresholdState}
-                </p>
               </div>
             </div>
           </div>
