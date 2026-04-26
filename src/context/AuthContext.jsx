@@ -42,12 +42,26 @@ export function AuthProvider({ children }) {
 
     // Listen for auth changes
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = sessionToUser(session);
-      setUser(u);
-      if (u) provision(u.accessToken);
-    });
+  data: { subscription },
+} = supabase.auth.onAuthStateChange((_event, session) => {
+  const u = sessionToUser(session);
+  setUser(u);
+  if (u) provision(u.accessToken);
+
+  // Sync token to Chrome extension so Google login works in extension popup
+  if (session && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        chrome.storage.local.set({
+          userId:       session.user.id,
+          accessToken:  session.access_token,
+          refreshToken: session.refresh_token,
+          tokenExpiry:  Date.now() + (session.expires_in || 3600) * 1000,
+        });
+      }
+    } catch { /* extension not installed — ignore */ }
+  }
+});
 
     return () => subscription.unsubscribe();
   }, []);
