@@ -4,8 +4,9 @@ import { supabase } from "../lib/supabase";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // { userId, accessToken, email }
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]               = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [isNewUser, setIsNewUser]     = useState(false); // triggers onboarding
 
   // Provision user with backend after every login
   async function provision(token) {
@@ -15,7 +16,7 @@ export function AuthProvider({ children }) {
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
-        },
+        }
       );
     } catch (e) {
       console.warn("Provision failed:", e);
@@ -25,33 +26,17 @@ export function AuthProvider({ children }) {
   function sessionToUser(session) {
     if (!session) return null;
     return {
-      userId: session.user.id,
+      userId:      session.user.id,
       accessToken: session.access_token,
-      email: session.user.email,
+      email:       session.user.email,
     };
   }
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = sessionToUser(session);
-      setUser(u);
-      if (u) provision(u.accessToken);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-  data: { subscription },
-} = supabase.auth.onAuthStateChange((_event, session) => {
-  const u = sessionToUser(session);
-  setUser(u);
-  if (u) provision(u.accessToken);
-
-  // Sync token to Chrome extension so Google login works in extension popup
-  if (session && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
+  // Sync session to Chrome extension storage so Google login works in extension
+  function syncToExtension(session) {
+    if (!session) return;
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
+      if (typeof chrome !== "undefined" && chrome.storage) {
         chrome.storage.local.set({
           userId:       session.user.id,
           accessToken:  session.access_token,
@@ -59,9 +44,59 @@ export function AuthProvider({ children }) {
           tokenExpiry:  Date.now() + (session.expires_in || 3600) * 1000,
         });
       }
-    } catch { /* extension not installed — ignore */ }
+    } catch {
+      // Extension not installed — ignore
+    }
   }
-});
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const u = sessionToUser(session);
+      setUser(u);
+      if (u) {
+        provision(u.accessToken);
+        syncToExtension(session);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const u = sessionToUser(session);
+      setUser(u);
+
+      if (u && session) {
+        provision(u.accessToken);
+        syncToExtension(session);
+      }
+
+      // Trigger onboarding for new Google OAuth users
+      // SIGNED_IN after a SOCIAL provider = new or returning Google user
+      // We use user.created_at to detect if this is truly a new signup
+      if (event === "SIGNED_IN" && session?.user) {
+        const createdAt  = new Date(session.user.created_at).getTime();
+        const now        = Date.now();
+        const ageSeconds = (now - createdAt) / 1000;
+        // If account was created in last 30 seconds = new user
+        if (ageSeconds < 30) {
+          setIsNewUser(true);
+        }
+      }
+
+      // Clear extension storage on logout
+      if (event === "SIGNED_OUT") {
+        try {
+          if (typeof chrome !== "undefined" && chrome.storage) {
+            chrome.storage.local.remove([
+              "userId", "accessToken", "refreshToken", "tokenExpiry",
+            ]);
+          }
+        } catch {}
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -82,7 +117,9 @@ export function AuthProvider({ children }) {
       options: { data: { name } },
     });
     if (error) throw new Error(error.message);
-    return sessionToUser(data.session);
+    // data.session is null when email confirmation is required
+    // Return null so Login.jsx knows to show "check your email"
+    return data.session ? sessionToUser(data.session) : null;
   };
 
   const loginWithGoogle = async () => {
@@ -96,11 +133,23 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setIsNewUser(false);
   };
+
+  const clearNewUser = () => setIsNewUser(false);
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, loginWithGoogle, logout, loading }}
+      value={{
+        user,
+        loading,
+        isNewUser,
+        clearNewUser,
+        login,
+        register,
+        loginWithGoogle,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
