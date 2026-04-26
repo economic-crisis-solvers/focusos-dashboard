@@ -3,18 +3,23 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser]               = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [isNewUser, setIsNewUser]     = useState(false); // triggers onboarding
+// Extension ID — needed for chrome.runtime.sendMessage from a webpage.
+// This is the ID of the unpacked extension (visible in chrome://extensions).
+// When published to Chrome Web Store, this becomes a fixed ID.
+// For now we try to send and catch any errors silently.
+const EXTENSION_ID = "gnmihpaapkgoickabmepllmgbadngfkh"; // FocusOS extension ID from chrome://extensions
 
-  // Provision user with backend after every login
+export function AuthProvider({ children }) {
+  const [user, setUser]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
+
   async function provision(token) {
     try {
       await fetch(
         "https://backend-production-88273.up.railway.app/auth/provision",
         {
-          method: "POST",
+          method:  "POST",
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -32,16 +37,40 @@ export function AuthProvider({ children }) {
     };
   }
 
-  // Sync session to Chrome extension storage so Google login works in extension
-  function syncToExtension(session) {
+  // Send token to Chrome extension via chrome.runtime.sendMessage.
+  // This is the correct cross-origin method — chrome.storage.local is sandboxed
+  // and cannot be written to by a webpage directly.
+  async function syncToExtension(session) {
     if (!session) return;
+    if (typeof chrome === "undefined" || !chrome.runtime) return;
+
+    const payload = {
+      type:         "FOCUSOS_AUTH_TOKEN",
+      userId:       session.user.id,
+      accessToken:  session.access_token,
+      refreshToken: session.refresh_token,
+      tokenExpiry:  Date.now() + (session.expires_in || 3600) * 1000,
+    };
+
     try {
-      if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.set({
-          userId:       session.user.id,
-          accessToken:  session.access_token,
-          refreshToken: session.refresh_token,
-          tokenExpiry:  Date.now() + (session.expires_in || 3600) * 1000,
+      if (EXTENSION_ID) {
+        // Send to specific extension ID (more reliable)
+        chrome.runtime.sendMessage(EXTENSION_ID, payload, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn("[FocusOS] Extension message failed:", chrome.runtime.lastError.message);
+          } else {
+            console.log("[FocusOS] Token synced to extension:", response);
+          }
+        });
+      } else {
+        // Send without ID — works if the dashboard is listed in externally_connectable
+        // and the extension is installed. Chrome will route it to the right extension.
+        chrome.runtime.sendMessage(payload, (response) => {
+          if (chrome.runtime.lastError) {
+            // Extension not installed or not connectable — ignore silently
+          } else {
+            console.log("[FocusOS] Token synced to extension:", response);
+          }
         });
       }
     } catch {
@@ -50,18 +79,16 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = sessionToUser(session);
       setUser(u);
-      if (u) {
+      if (u && session) {
         provision(u.accessToken);
         syncToExtension(session);
       }
       setLoading(false);
     });
 
-    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -73,28 +100,17 @@ export function AuthProvider({ children }) {
         syncToExtension(session);
       }
 
-      // Trigger onboarding for new Google OAuth users
-      // SIGNED_IN after a SOCIAL provider = new or returning Google user
-      // We use user.created_at to detect if this is truly a new signup
+      // Detect new Google user (account created in last 30 seconds)
       if (event === "SIGNED_IN" && session?.user) {
-        const createdAt  = new Date(session.user.created_at).getTime();
-        const now        = Date.now();
-        const ageSeconds = (now - createdAt) / 1000;
-        // If account was created in last 30 seconds = new user
+        const ageSeconds = (Date.now() - new Date(session.user.created_at).getTime()) / 1000;
         if (ageSeconds < 30) {
           setIsNewUser(true);
         }
       }
 
-      // Clear extension storage on logout
       if (event === "SIGNED_OUT") {
-        try {
-          if (typeof chrome !== "undefined" && chrome.storage) {
-            chrome.storage.local.remove([
-              "userId", "accessToken", "refreshToken", "tokenExpiry",
-            ]);
-          }
-        } catch {}
+        setUser(null);
+        setIsNewUser(false);
       }
     });
 
@@ -102,10 +118,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
     return sessionToUser(data.session);
   };
@@ -117,15 +130,13 @@ export function AuthProvider({ children }) {
       options: { data: { name } },
     });
     if (error) throw new Error(error.message);
-    // data.session is null when email confirmation is required
-    // Return null so Login.jsx knows to show "check your email"
     return data.session ? sessionToUser(data.session) : null;
   };
 
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: "https://focusos-dashboard.vercel.app" },
+      options:  { redirectTo: "https://focusos-dashboard.vercel.app" },
     });
     if (error) throw new Error(error.message);
   };
@@ -140,16 +151,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isNewUser,
-        clearNewUser,
-        login,
-        register,
-        loginWithGoogle,
-        logout,
-      }}
+      value={{ user, loading, isNewUser, clearNewUser, login, register, loginWithGoogle, logout }}
     >
       {children}
     </AuthContext.Provider>
