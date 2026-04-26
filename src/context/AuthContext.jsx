@@ -7,7 +7,7 @@ const AuthContext = createContext(null);
 // This is the ID of the unpacked extension (visible in chrome://extensions).
 // When published to Chrome Web Store, this becomes a fixed ID.
 // For now we try to send and catch any errors silently.
-const EXTENSION_ID = "gnmihpaapkgoickabmepllmgbadngfkh"; // FocusOS extension ID from chrome://extensions
+const EXTENSION_ID = "lfikoknbobhjaddicapbffojikenpgad"; // FocusOS extension ID from chrome://extensions
 
 export function AuthProvider({ children }) {
   const [user, setUser]           = useState(null);
