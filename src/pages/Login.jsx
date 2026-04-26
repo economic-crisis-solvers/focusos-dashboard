@@ -3,24 +3,43 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Login({ onNewUser }) {
   const { login, register, loginWithGoogle } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [isLogin, setIsLogin]               = useState(true);
+  const [email, setEmail]                   = useState("");
+  const [name, setName]                     = useState("");
+  const [password, setPassword]             = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError]                   = useState("");
+  const [loading, setLoading]               = useState(false);
+  const [googleLoading, setGoogleLoading]   = useState(false);
+  const [emailSent, setEmailSent]           = useState(false); // show after register
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Confirm password check
+    if (!isLogin && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!isLogin && password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register(email, password, name);
-        onNewUser?.();
+        const session = await register(email, password, name);
+        if (!session) {
+          // Email confirmation required — Supabase returned null session
+          setEmailSent(true);
+        } else {
+          // Auto-confirmed (e.g. email confirmation disabled in Supabase)
+          onNewUser?.();
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -39,6 +58,47 @@ export default function Login({ onNewUser }) {
     }
   };
 
+  // ── Email verification sent screen ────────────────────────────────────────
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="mb-10">
+            <h1 className="text-2xl font-semibold tracking-widest text-white uppercase">
+              FocusOS
+            </h1>
+          </div>
+          <div className="bg-[#111114] border border-zinc-800 rounded-2xl p-8">
+            <div className="text-4xl mb-4">📬</div>
+            <h2 className="text-white font-semibold text-xl mb-3">
+              Check your email
+            </h2>
+            <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+              We sent a verification link to{" "}
+              <span className="text-emerald-400 font-medium">{email}</span>.
+              Click the link in the email to verify your account and get started.
+            </p>
+            <p className="text-zinc-600 text-xs mb-6">
+              Didn't receive it? Check your spam folder.
+            </p>
+            <button
+              onClick={() => {
+                setEmailSent(false);
+                setIsLogin(true);
+                setPassword("");
+                setConfirmPassword("");
+              }}
+              className="w-full border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-medium py-3 rounded-lg text-sm transition-colors"
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main login / register form ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -88,14 +148,18 @@ export default function Login({ onNewUser }) {
           {/* Tab switcher */}
           <div className="flex mb-6 bg-zinc-900 rounded-lg p-1">
             <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 text-sm rounded-md transition-all ${isLogin ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+              onClick={() => { setIsLogin(true); setError(""); }}
+              className={`flex-1 py-2 text-sm rounded-md transition-all ${
+                isLogin ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300"
+              }`}
             >
               Login
             </button>
             <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 text-sm rounded-md transition-all ${!isLogin ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+              onClick={() => { setIsLogin(false); setError(""); }}
+              className={`flex-1 py-2 text-sm rounded-md transition-all ${
+                !isLogin ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300"
+              }`}
             >
               Register
             </button>
@@ -117,6 +181,7 @@ export default function Login({ onNewUser }) {
                 />
               </div>
             )}
+
             <div>
               <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
                 Email
@@ -130,6 +195,7 @@ export default function Login({ onNewUser }) {
                 placeholder="you@example.com"
               />
             </div>
+
             <div>
               <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
                 Password
@@ -143,6 +209,23 @@ export default function Login({ onNewUser }) {
                 placeholder="••••••••"
               />
             </div>
+
+            {/* Confirm password — only on register */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={!isLogin}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+            )}
 
             {error && <p className="text-red-400 text-sm">{error}</p>}
 
