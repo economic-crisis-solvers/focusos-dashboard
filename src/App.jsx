@@ -11,7 +11,8 @@ import Settings from "./pages/Settings";
 import { useState } from "react";
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, isNewUser, clearNewUser } = useAuth();
+  // Local flag for onboarding triggered by email register
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   if (loading)
@@ -21,20 +22,31 @@ function AppRoutes() {
       </div>
     );
 
-  if (!user) return <Login onNewUser={() => setShowOnboarding(true)} />;
+  if (!user)
+    return (
+      <Login onNewUser={() => setShowOnboarding(true)} />
+    );
 
-  if (showOnboarding)
-    return <Onboarding onComplete={() => setShowOnboarding(false)} />;
+  // Show onboarding for new email registrations OR new Google signups
+  if (showOnboarding || isNewUser)
+    return (
+      <Onboarding
+        onComplete={() => {
+          setShowOnboarding(false);
+          clearNewUser();
+        }}
+      />
+    );
 
   return (
     <FocusProvider>
       <Layout>
         <Routes>
-          <Route path="/" element={<Live />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="/"          element={<Live />} />
+          <Route path="/history"   element={<History />} />
+          <Route path="/insights"  element={<Insights />} />
+          <Route path="/settings"  element={<Settings />} />
+          <Route path="*"          element={<Navigate to="/" />} />
         </Routes>
       </Layout>
     </FocusProvider>
