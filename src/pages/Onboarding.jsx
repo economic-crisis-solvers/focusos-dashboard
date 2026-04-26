@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const STEPS = ["Welcome", "Connect", "Threshold"];
+const STEPS = ["Welcome", "Connect", "Work Hours", "Threshold"];
 
 function StepDots({ current }) {
   return (
@@ -11,10 +11,9 @@ function StepDots({ current }) {
           key={i}
           className="rounded-full transition-all duration-300"
           style={{
-            width: i === current ? 24 : 8,
-            height: 8,
-            background:
-              i === current ? "#10b981" : i < current ? "#10b98166" : "#27272a",
+            width:      i === current ? 24 : 8,
+            height:     8,
+            background: i === current ? "#10b981" : i < current ? "#10b98166" : "#27272a",
           }}
         />
       ))}
@@ -38,21 +37,9 @@ function Step1({ onNext }) {
 
       <div className="space-y-4 mb-12">
         {[
-          {
-            icon: "⚡",
-            title: "Zero-touch activation",
-            desc: "No buttons, no timers. It just works.",
-          },
-          {
-            icon: "🔄",
-            title: "Cross-device intelligence",
-            desc: "Browser signals protect your phone automatically.",
-          },
-          {
-            icon: "🧠",
-            title: "Predictive, not reactive",
-            desc: "Acts before focus fully collapses.",
-          },
+          { icon: "⚡", title: "Zero-touch activation",    desc: "No buttons, no timers. It just works." },
+          { icon: "🔄", title: "Cross-device intelligence", desc: "Browser signals protect your phone automatically." },
+          { icon: "🧠", title: "Predictive, not reactive",  desc: "Acts before focus fully collapses." },
         ].map(({ icon, title, desc }) => (
           <div
             key={title}
@@ -78,7 +65,6 @@ function Step1({ onNext }) {
 }
 
 function Step2({ onNext }) {
-  const copied = false;
   return (
     <div className="flex flex-col">
       <StepDots current={1} />
@@ -92,15 +78,9 @@ function Step2({ onNext }) {
 
       <div className="space-y-4 mb-8">
         {[
-          {
-            step: "1",
-            text: "Install the FocusOS Chrome Extension from the Chrome Web Store",
-          },
+          { step: "1", text: "Install the FocusOS Chrome Extension from the Chrome Web Store" },
           { step: "2", text: "Click the FocusOS icon in your browser toolbar" },
-          {
-            step: "3",
-            text: "The extension connects automatically — no login needed",
-          },
+          { step: "3", text: "Sign in with your FocusOS account in the extension" },
         ].map(({ step, text }) => (
           <div
             key={step}
@@ -140,8 +120,73 @@ function Step2({ onNext }) {
   );
 }
 
-function Step3({ onDone }) {
-  const [threshold, setThreshold] = useState(45);
+function Step3({ onNext, workHoursStart, workHoursEnd, setWorkHoursStart, setWorkHoursEnd }) {
+  return (
+    <div className="flex flex-col">
+      <StepDots current={2} />
+      <h2 className="text-3xl font-semibold text-white mb-3">
+        Set your work hours
+      </h2>
+      <p className="text-zinc-400 text-base mb-8 leading-relaxed">
+        FocusOS is fully active only during your work hours. Outside this window
+        it watches silently — no DND, no nudges. Set it once, forget it forever.
+      </p>
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-6">
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-3">
+              Work starts
+            </label>
+            <input
+              type="time"
+              value={workHoursStart}
+              onChange={(e) => setWorkHoursStart(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-3">
+              Work ends
+            </label>
+            <input
+              type="time"
+              value={workHoursEnd}
+              onChange={(e) => setWorkHoursEnd(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-zinc-800 rounded-xl">
+          <p className="text-sm text-zinc-400">
+            Currently set:{" "}
+            <span className="text-emerald-400 font-medium">
+              {workHoursStart} – {workHoursEnd}
+            </span>
+            {" "}· Full protection active during these hours only.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl mb-8">
+        <p className="text-sm text-zinc-400">
+          <span className="text-white font-medium">You can always change this</span>{" "}
+          in Settings → Work Hours. This is just your starting point.
+        </p>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-4 rounded-xl text-base transition-colors"
+      >
+        Continue →
+      </button>
+    </div>
+  );
+}
+
+function Step4({ onDone, threshold, setThreshold, saving }) {
   const stateLabel =
     threshold >= 60 ? "Engaged" : threshold >= 45 ? "Drifting" : "Distracted";
   const stateColor =
@@ -149,7 +194,7 @@ function Step3({ onDone }) {
 
   return (
     <div className="flex flex-col">
-      <StepDots current={2} />
+      <StepDots current={3} />
       <h2 className="text-3xl font-semibold text-white mb-3">
         Set your focus threshold
       </h2>
@@ -175,9 +220,9 @@ function Step3({ onDone }) {
             <span
               className="text-sm font-medium px-4 py-2 rounded-full border"
               style={{
-                color: stateColor,
+                color:       stateColor,
                 borderColor: stateColor + "44",
-                background: stateColor + "11",
+                background:  stateColor + "11",
               }}
             >
               {stateLabel}
@@ -208,16 +253,56 @@ function Step3({ onDone }) {
 
       <button
         onClick={onDone}
-        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-4 rounded-xl text-base transition-colors"
+        disabled={saving}
+        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-4 rounded-xl text-base transition-colors"
       >
-        Start focusing →
+        {saving ? "Saving..." : "Start focusing →"}
       </button>
     </div>
   );
 }
 
 export default function Onboarding({ onComplete }) {
-  const [step, setStep] = useState(0);
+  const { user }             = useAuth();
+  const [step, setStep]      = useState(0);
+  const [threshold, setThreshold]         = useState(45);
+  const [workHoursStart, setWorkHoursStart] = useState("09:00");
+  const [workHoursEnd, setWorkHoursEnd]     = useState("18:00");
+  const [saving, setSaving]  = useState(false);
+  const [error, setError]    = useState("");
+
+  const handleDone = async () => {
+    if (!user?.accessToken) { onComplete(); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(
+        "https://backend-production-88273.up.railway.app/api/settings",
+        {
+          method:  "PUT",
+          headers: {
+            "Content-Type":  "application/json",
+            Authorization:   `Bearer ${user.accessToken}`,
+          },
+          body: JSON.stringify({
+            focusThreshold: threshold,
+            workHours: {
+              start: workHoursStart,
+              end:   workHoursEnd,
+            },
+          }),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to save settings");
+      onComplete();
+    } catch (e) {
+      setError("Could not save settings — you can update them in Settings later.");
+      // Still proceed after showing error briefly
+      setTimeout(onComplete, 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center px-4">
@@ -229,9 +314,28 @@ export default function Onboarding({ onComplete }) {
         </div>
 
         <div className="bg-[#111114] border border-zinc-800 rounded-2xl p-10">
+          {error && (
+            <p className="text-yellow-400 text-sm mb-4 text-center">{error}</p>
+          )}
           {step === 0 && <Step1 onNext={() => setStep(1)} />}
           {step === 1 && <Step2 onNext={() => setStep(2)} />}
-          {step === 2 && <Step3 onDone={onComplete} />}
+          {step === 2 && (
+            <Step3
+              onNext={() => setStep(3)}
+              workHoursStart={workHoursStart}
+              workHoursEnd={workHoursEnd}
+              setWorkHoursStart={setWorkHoursStart}
+              setWorkHoursEnd={setWorkHoursEnd}
+            />
+          )}
+          {step === 3 && (
+            <Step4
+              onDone={handleDone}
+              threshold={threshold}
+              setThreshold={setThreshold}
+              saving={saving}
+            />
+          )}
         </div>
       </div>
     </div>
