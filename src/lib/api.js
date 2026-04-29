@@ -1,4 +1,4 @@
-const API_BASE = "https://backend-production-88273.up.railway.app";
+const API_BASE = "https://focusos-backend-production.up.railway.app";
 
 async function request(path, options = {}, token = null) {
   const headers = { "Content-Type": "application/json" };
