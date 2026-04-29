@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
   async function provision(token) {
     try {
       await fetch(
-        "https://backend-production-88273.up.railway.app/auth/provision",
+        "https://focusos-backend-production.up.railway.app/auth/provision",
         {
           method:  "POST",
           headers: { Authorization: `Bearer ${token}` },
