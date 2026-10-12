@@ -277,7 +277,7 @@ export default function Onboarding({ onComplete }) {
     setError("");
     try {
       const res = await fetch(
-        "https://focusos-backend-production.up.railway.app/api/settings",
+        "https://focusos-backend-production-7ce5.up.railway.app/api/settings",
         {
           method:  "PUT",
           headers: {
